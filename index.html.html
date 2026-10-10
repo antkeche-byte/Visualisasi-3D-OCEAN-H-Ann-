@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCEAN-H₂ | 3D Offshore OTEC-Hydrogen Hub Simulator</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Three.js & Plugins -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- GSAP for Smooth Camera Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            user-select: none;
+        }
+        
+        /* Judul & angka: serif tebal seperti kartu referensi */
+        .font-tech {
+            font-family: 'Fraunces', Georgia, serif;
+            letter-spacing: 0;
+        }
+
+        /* ===== Kartu gradasi (merah -> ungu -> biru) ===== */
+        .glass-panel {
+            position: relative;
+            color: #fff;
+            border: 0 !important;
+            border-radius: 20px;
+            background:
+                radial-gradient(120% 70% at 12% -12%, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0) 52%),
+                linear-gradient(170deg, #ff6a6a 0%, #f2394f 34%, #b83fa8 68%, #5a5cf0 100%);
+            box-shadow: 0 14px 34px rgba(110, 40, 170, 0.38), inset 0 1px 0 rgba(255,255,255,0.35);
+        }
+
+        /* Varian teal (seperti kartu Interdisciplinary) */
+        .glass-panel.grad-teal,
+        #detail-card {
+            background:
+                radial-gradient(120% 70% at 12% -12%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 52%),
+                linear-gradient(170deg, #8fe6dc 0%, #2fc7bb 40%, #0fa9a6 100%);
+            box-shadow: 0 14px 34px rgba(8, 120, 125, 0.40), inset 0 1px 0 rgba(255,255,255,0.45);
+        }
+
+        /* Teks di dalam kartu */
+        .glass-panel,
+        .glass-panel [class*="text-"] {
+            color: #fff !important;
+            text-shadow: 0 1px 2px rgba(60, 10, 70, 0.28);
+        }
+        .glass-panel [class*="text-slate-4"],
+        .glass-panel [class*="text-slate-3"] {
+            color: rgba(255,255,255,0.86) !important;
+        }
+        #detail-card, #detail-card [class*="text-"] { text-shadow: 0 1px 2px rgba(0, 70, 75, 0.30); }
+
+        /* Kotak kecil di dalam kartu */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.17);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.34);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.25);
+            transition: background .2s, transform .2s;
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.30);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Angka besar */
+        .stat-num {
+            font-family: 'Fraunces', Georgia, serif;
+            font-weight: 800;
+            font-size: 1.45rem;
+            line-height: 1.15;
+            letter-spacing: -0.01em;
+        }
+
+        /* Pill (seperti label "Law") */
+        .pill-indigo {
+            background: #4b3fd6 !important;
+            border: 0 !important;
+            color: #fff !important;
+            text-shadow: none !important;
+        }
+
+        /* Progress bar */
+        .bar-track { background: rgba(255,255,255,0.28) !important; }
+        .bar-fill  { background: linear-gradient(90deg, #ffffff, #d9fff9) !important; }
+
+        /* Tombol aktif = putih, teks merah (preset & toggle) */
+        .preset-btn.active,
+        .toggle-btn:not(.is-off) {
+            background: #fff !important;
+            border-color: #fff !important;
+            box-shadow: 0 4px 14px rgba(80, 30, 120, 0.28);
+        }
+        .grad-teal .toggle-btn:not(.is-off) i,
+        .grad-teal .toggle-btn:not(.is-off) span { color: #0b8f8c !important; text-shadow: none; }
+        .preset-btn.active, .preset-btn.active i, .preset-btn.active span {
+            color: #d9264a !important;
+            text-shadow: none;
+        }
+        .toggle-btn.is-off { opacity: 0.6; }
+
+        /* Ikon tombol ikut warna teks */
+        .glass-panel button i { color: inherit !important; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(5, 15, 25, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 229, 255, 0.3);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 229, 255, 0.6);
+        }
+
+        /* Pulse Animations */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 5px rgba(0,229,255,0.4)); }
+            50% { opacity: 1; filter: drop-shadow(0 0 15px rgba(0,229,255,0.9)); }
+        }
+
+        .animate-glow {
+            animation: pulse-glow 2.5s infinite ease-in-out;
+        }
+
+        /* Canvas Overlay Fix */
+        #webgl-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 overflow-hidden select-none">
+
+    <div id="webgl-container"></div>
+
+    <div id="ui-layer" class="flex flex-col justify-between p-4 md:p-6">
+        
+        <!-- TOP HEADER BAR -->
+        <header class="flex flex-wrap items-center justify-between gap-4 w-full">
+            <div class="glass-panel rounded-2xl px-5 py-3 flex items-center space-x-4 interactive">
+                <div class="w-10 h-10 rounded-xl bg-white/25 border border-white/50 flex items-center justify-center text-white text-xl font-black shadow-lg">
+                    <i class="fa-solid fa-water"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg md:text-xl font-bold font-tech tracking-wider text-white">OCEAN-H₂</h1>
+                        <span class="px-2 py-0.5 text-[10px] font-bold tracking-widest uppercase pill-indigo rounded-full">FINALIST DEMO</span>
+                    </div>
+                    <p class="text-xs text-slate-300">Hub OTEC-Hidrogen Lepas Pantai • Kaskade Termal & Nanofilm Anti-Fouling</p>
+                </div>
+            </div>
+
+            <!-- TOGGLE CONTROLS BAR -->
+            <div class="glass-panel grad-teal rounded-2xl px-3 py-2 flex items-center gap-2 interactive text-xs">
+                <button id="btn-toggle-particles" class="toggle-btn px-3 py-2 rounded-xl glass-card text-cyan-300 hover:text-white transition flex items-center gap-2">
+                    <i class="fa-solid fa-circle-nodes text-emerald-400"></i>
+                    <span class="hidden sm:inline">Flow Lines</span>
+                </button>
+                <button id="btn-toggle-floating" class="toggle-btn px-3 py-2 rounded-xl glass-card text-slate-300 hover:text-white transition flex items-center gap-2">
+                    <i class="fa-solid fa-water-waves text-blue-400"></i>
+                    <span class="hidden sm:inline">Ocean Motion</span>
+                </button>
+                <button id="btn-toggle-labels" class="toggle-btn px-3 py-2 rounded-xl glass-card text-slate-300 hover:text-white transition flex items-center gap-2">
+                    <i class="fa-solid fa-tags text-yellow-400"></i>
+                    <span class="hidden sm:inline">3D Badges</span>
+                </button>
+                <button id="btn-toggle-theme" class="toggle-btn px-3 py-2 rounded-xl glass-card text-slate-300 hover:text-white transition flex items-center gap-2">
+                    <i class="fa-solid fa-moon"></i>
+                    <span class="hidden sm:inline">Night Sky</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MIDDLE CONTAINER: HUD TELEMETRY & INFO PANEL -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-stretch gap-4 my-auto pointer-events-none">
+            
+            <!-- LEFT TELEMETRY HUD -->
+            <div class="glass-panel rounded-2xl p-4 w-full md:w-80 flex flex-col gap-3 interactive text-xs">
+                <div class="flex items-center justify-between border-b border-white/30 pb-2">
+                    <span class="font-tech text-sm font-bold text-cyan-300 tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-gauge-high animate-glow"></i> LIVE TELEMETRY
+                    </span>
+                    <span class="flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> ONLINE
+                    </span>
+                </div>
+
+                <!-- METRIC 1 -->
+                <div class="grid grid-cols-2 gap-2 text-slate-300">
+                    <div class="glass-card p-2.5 rounded-xl">
+                        <div class="text-[10px] text-slate-400">Suhu Surface</div>
+                        <div class="stat-num">28.4 °C</div>
+                    </div>
+                    <div class="glass-card p-2.5 rounded-xl">
+                        <div class="text-[10px] text-slate-400">Suhu Deep Sea</div>
+                        <div class="stat-num">4.8 °C</div>
+                    </div>
+                </div>
+
+                <!-- METRIC 2: NOVELTY COMPARISON -->
+                <div class="glass-card p-3 rounded-xl space-y-1.5">
+                    <div class="flex justify-between items-center text-[11px]">
+                        <span class="text-slate-300 font-semibold">Efisiensi Heat Exchanger</span>
+                        <span class="stat-num" style="font-size:1.25rem" id="val-efficiency">98.5%</span>
+                    </div>
+                    <div class="w-full bar-track h-2.5 rounded-full overflow-hidden flex">
+                        <div class="bar-fill h-full rounded-full" style="width: 98.5%"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-slate-400 pt-0.5">
+                        <span>Dengan Nanofilm: 98.5%</span>
+                        <span class="text-rose-400">Tanpa Nanofilm: ~62.0%</span>
+                    </div>
+                </div>
+
+                <!-- METRIC 3: HYDROGEN & LCOH -->
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="glass-card p-2.5 rounded-xl">
+                        <div class="text-[10px] text-slate-400">Produksi H₂</div>
+                        <div class="stat-num" style="font-size:1.2rem"><span id="val-h2-prod">485.0</span> kg/jam</div>
+                    </div>
+                    <div class="glass-card p-2.5 rounded-xl">
+                        <div class="text-[10px] text-slate-400">Estimasi LCOH</div>
+                        <div class="stat-num" style="font-size:1.2rem">$3.12 / kg</div>
+                        <div class="text-[9px] text-emerald-400 font-semibold"> Hemat ~32.5%</div>
+                    </div>
+                </div>
+
+                <!-- THERMAL CASCADE BENEFIT BADGE -->
+                <div class="glass-card p-2.5 rounded-xl flex items-center gap-3">
+                    <i class="fa-solid fa-bolt-lightning text-yellow-400 text-lg"></i>
+                    <div>
+                        <div class="text-[10px] text-teal-300 font-bold uppercase tracking-wider">Kaskade Termal Aktif</div>
+                        <div class="text-[10px] text-slate-300">Desalinasi otomatis & optimasi suhu sel PEM</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT DETAIL CARD (DRAWER WHEN HOTSPOT / PRESET CLICKED) -->
+            <div id="detail-card" class="glass-panel rounded-2xl p-5 w-full md:w-96 interactive transform transition-all duration-500 translate-x-full opacity-0 hidden flex-col gap-4 self-center md:self-auto">
+                <div class="flex items-start justify-between border-b border-white/30 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div id="card-icon" class="w-10 h-10 rounded-xl bg-white/25 text-white flex items-center justify-center text-lg border border-white/50">
+                            <i class="fa-solid fa-cube"></i>
+                        </div>
+                        <div>
+                            <h3 id="card-title" class="text-base font-bold text-white font-tech">Komponen OCEAN-H₂</h3>
+                            <span id="card-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full pill-indigo">Inovasi Utama</span>
+                        </div>
+                    </div>
+                    <button id="btn-close-card" class="text-slate-400 hover:text-white p-1 transition">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <div class="text-xs text-slate-300 leading-relaxed space-y-2">
+                    <p id="card-desc">Pilih komponen pada model 3D atau tombol navigasi di bawah untuk melihat detail fungsi teknis dan kebaruan (novelty).</p>
+                </div>
+
+                <!-- SPECIFICATION HIGHLIGHTS -->
+                <div class="glass-card p-3 rounded-xl space-y-2 text-xs">
+                    <div class="font-bold text-cyan-300 text-[11px] font-tech tracking-wider uppercase">Spesifikasi Teknis</div>
+                    <div id="card-specs" class="space-y-1.5 text-[11px]">
+                        <!-- Dynamic content filled by JS -->
+                    </div>
+                </div>
+
+                <!-- NOVELTY HIGHLIGHT -->
+                <div class="glass-card p-3 rounded-xl text-xs space-y-1">
+                    <div class="font-bold text-amber-400 text-[11px] font-tech flex items-center gap-1.5">
+                        <i class="fa-solid fa-lightbulb"></i> KEBARUAN (NOVELTY)
+                    </div>
+                    <p id="card-novelty" class="text-slate-300 text-[11px]">Penjelasan nilai inovasi esai dalam menekan biaya operasional & meningkatkan efisiensi.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAVIGATION PRESETS BAR -->
+        <footer class="w-full flex justify-center interactive mt-auto pt-2">
+            <nav class="glass-panel rounded-2xl p-2 flex flex-wrap items-center justify-center gap-1.5 max-w-4xl shadow-2xl">
+                <button class="preset-btn px-3 py-2 rounded-xl glass-card text-xs text-cyan-300 hover:bg-cyan-500/20 font-semibold transition flex items-center gap-2 active" data-preset="overview">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>Overview</span>
+                </button>
+                <button class="preset-btn px-3 py-2 rounded-xl glass-card text-xs text-slate-300 hover:bg-cyan-500/20 font-semibold transition flex items-center gap-2" data-preset="pipe">
+                    <i class="fa-solid fa-arrows-down-to-line text-blue-400"></i>
+                    <span>CWP (-1000m)</span>
+                </button>
+                <button class="preset-btn px-3 py-2 rounded-xl glass-card text-xs text-slate-300 hover:bg-cyan-500/20 font-semibold transition flex items-center gap-2" data-preset="nanofilm">
+                    <i class="fa-solid fa-microchip text-teal-400"></i>
+                    <span>OTEC & Nanofilm</span>
+                </button>
+                <button class="preset-btn px-3 py-2 rounded-xl glass-card text-xs text-slate-300 hover:bg-cyan-500/20 font-semibold transition flex items-center gap-2" data-preset="cascade">
+                    <i class="fa-solid fa-temperature-arrow-down text-rose-400"></i>
+                    <span>Kaskade Termal</span>
+                </button>
+                <button class="preset-btn px-3 py-2 rounded-xl glass-card text-xs text-slate-300 hover:bg-cyan-500/20 font-semibold transition flex items-center gap-2" data-preset="pem">
+                    <i class="fa-solid fa-vial-circle-check text-emerald-400"></i>
+                    <span>PEM & Storage</span>
+                </button>
+                <button class="preset-btn px-3 py-2 rounded-xl glass-card text-xs text-slate-300 hover:bg-cyan-500/20 font-semibold transition flex items-center gap-2" data-preset="bunkering">
+                    <i class="fa-solid fa-ship text-amber-400"></i>
+                    <span>Bunkering Vessel</span>
+                </button>
+            </nav>
+        </footer>
+    </div>
+
+    <script>
+        // --- 1. GLOBAL SCENE SETUP & CONSTANTS ---
+        const container = document.getElementById('webgl-container');
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color('#030b14');
+        scene.fog = new THREE.FogExp2('#031726', 0.008);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 1000);
+        camera.position.set(45, 25, 55);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI/2 + 0.3; // Allow underwater view
+        controls.minDistance = 8;
+        controls.maxDistance = 180;
+        controls.target.set(0, 0, 0);
+
+        // State Flags
+        let isNight = true;
+        let showParticles = true;
+        let isFloating = true;
+        let showBadges = true;
+        let animatedObjects = [];
+        let particleSystems = [];
+        let clickableMeshes = [];
+        let selectedObject = null;
+
+        // --- STREAMING_CHUNK:Setting up Environment Lighting (Sun/Moon, Hemisphere)... ---
+        const ambientLight = new THREE.AmbientLight(0x1a334e, 1.2);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0x80d8ff, 2.5);
+        mainLight.position.set(40, 60, 30);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 2048;
+        mainLight.shadow.mapSize.height = 2048;
+        mainLight.shadow.camera.near = 10;
+        mainLight.shadow.camera.far = 200;
+        const d = 50;
+        mainLight.shadow.camera.left = -d;
+        mainLight.shadow.camera.right = d;
+        mainLight.shadow.camera.top = d;
+        mainLight.shadow.camera.bottom = -d;
+        scene.add(mainLight);
+
+        const underwaterLight = new THREE.DirectionalLight(0x00e5ff, 1.5);
+        underwaterLight.position.set(-20, -40, -20);
+        scene.add(underwaterLight);
+
+        const waterGeometry = new THREE.PlaneGeometry(300, 300, 128, 128);
+        const waterMaterial = new THREE.MeshStandardMaterial({
+            color: 0x004466,
+            roughness: 0.1,
+            metalness: 0.8,
+            transparent: true,
+            opacity: 0.65,
+            flatShading: true,
+            side: THREE.DoubleSide
+        });
+        const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+        waterMesh.rotation.x = -Math.PI / 2;
+        waterMesh.position.y = 0;
+        scene.add(waterMesh);
+
+        // Store original wave vertices
+        const posAttr = waterGeometry.attributes.position;
+        const initialWaterZ = new Float32Array(posAttr.count);
+        for (let i = 0; i < posAttr.count; i++) {
+            initialWaterZ[i] = posAttr.getZ(i);
+        }
+
+        const platformGroup = new THREE.Group();
+        scene.add(platformGroup);
+
+        // Shared Materials
+        const steelMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.3 });
+        const darkSteelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.2 });
+        const yellowMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.5, roughness: 0.4 });
+        const tealGlowMat = new THREE.MeshStandardMaterial({ color: 0x0d9488, emissive: 0x14b8a6, emissiveIntensity: 0.5, roughness: 0.2 });
+        const cyanGlowMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x06b6d4, emissiveIntensity: 0.6, roughness: 0.2 });
+        const greenGlowMat = new THREE.MeshStandardMaterial({ color: 0x059669, emissive: 0x10b981, emissiveIntensity: 0.6, roughness: 0.2 });
+        const crimsonMat = new THREE.MeshStandardMaterial({ color: 0x9f1239, emissive: 0xe11d48, emissiveIntensity: 0.4, roughness: 0.3 });
+
+        // 1. Pontoons (Submerged Floats)
+        const pontoonGeo = new THREE.CylinderGeometry(2.2, 2.2, 38, 16);
+        const p1 = new THREE.Mesh(pontoonGeo, steelMat);
+        p1.rotation.z = Math.PI / 2;
+        p1.position.set(0, -3.5, -12);
+        const p2 = p1.clone();
+        p2.position.set(0, -3.5, 12);
+        platformGroup.add(p1, p2);
+
+        // 2. Vertical Support Columns
+        const colGeo = new THREE.CylinderGeometry(1.8, 1.8, 8, 16);
+        const colPositions = [
+            [-14, 0.5, -12], [14, 0.5, -12],
+            [-14, 0.5, 12],  [14, 0.5, 12],
+            [0, 0.5, -12],    [0, 0.5, 12]
+        ];
+        colPositions.forEach(pos => {
+            const col = new THREE.Mesh(colGeo, darkSteelMat);
+            col.position.set(...pos);
+            col.castShadow = true;
+            platformGroup.add(col);
+        });
+
+        // 3. Main Deck Platform Slab
+        const deckGeo = new THREE.BoxGeometry(36, 1.2, 28);
+        const deckMesh = new THREE.Mesh(deckGeo, steelMat);
+        deckMesh.position.set(0, 4.5, 0);
+        deckMesh.receiveShadow = true;
+        deckMesh.castShadow = true;
+        platformGroup.add(deckMesh);
+
+        
+        // Helper to register clickable interactive 3D components
+        function registerComponent(mesh, key, title, badge, desc, specs, novelty, iconClass) {
+            mesh.userData = { key, title, badge, desc, specs, novelty, iconClass };
+            clickableMeshes.push(mesh);
+        }
+
+        // A. OTEC Heat Exchanger Module (+ NANOFILM)
+        const otecGroup = new THREE.Group();
+        otecGroup.position.set(-10, 6.2, -6);
+        const otecBox = new THREE.Mesh(new THREE.BoxGeometry(7, 2.8, 5), tealGlowMat);
+        otecBox.castShadow = true;
+        otecGroup.add(otecBox);
+        
+        // Nanofilm Accent Strip
+        const nanofilmStrip = new THREE.Mesh(new THREE.BoxGeometry(7.1, 0.4, 5.1), new THREE.MeshBasicMaterial({ color: 0x5eead4 }));
+        nanofilmStrip.position.y = 0.2;
+        otecGroup.add(nanofilmStrip);
+        platformGroup.add(otecGroup);
+
+        registerComponent(
+            otecBox,
+            'nanofilm',
+            'OTEC Heat Exchanger + Nanofilm',
+            'Inovasi Novelty #1',
+            'Unit penukar panas OTEC yang dilapisi Nanofilm Anti-Fouling khusus untuk mengunci efisiensi perpindahan panas tanpa terganggu organisme biofouling maritim.',
+            [
+                { label: 'Efisiensi Thermal', val: '98.5% (Konstan)' },
+                { label: 'Ketebalan Coating', val: '~150 nm' },
+                { label: 'Umur Bebas Maintenance', val: '> 5 Tahun' }
+            ],
+            'Mencegah penurunan efisiensi panas akibat lumut & kerang, menekan biaya pembersihan berkala hingga 80%.',
+            'fa-microchip'
+        );
+
+        // B. Thermal Cascade & Desalination Unit
+        const cascadeGroup = new THREE.Group();
+        cascadeGroup.position.set(-10, 6.2, 6);
+        const cascadeBox = new THREE.Mesh(new THREE.BoxGeometry(6.5, 2.8, 5), crimsonMat);
+        cascadeBox.castShadow = true;
+        cascadeGroup.add(cascadeBox);
+        platformGroup.add(cascadeGroup);
+
+        registerComponent(
+            cascadeBox,
+            'cascade',
+            'Unit Kaskade Termal & Desalinasi',
+            'Inovasi Novelty #2',
+            'Memanfaatkan sisa kalor buangan (waste heat) dari siklus OTEC untuk proses desalinasi air murni sekaligus pengondisian suhu optimal masukan elektroliser.',
+            [
+                { label: 'Output Air Murni', val: '120 m³/hari' },
+                { label: 'Temperatur Operasi PEM', val: '65 °C (Optimal)' },
+                { label: 'Recovery Energi', val: '24.5%' }
+            ],
+            'Menghilangkan kebutuhan energi tambahan untuk pemurnian air laut dan prapemanasan elektroliser.',
+            'fa-temperature-arrow-down'
+        );
+
+        // C. PEM Electrolyzer Module
+        const pemGroup = new THREE.Group();
+        pemGroup.position.set(2, 6.2, 6);
+        const pemBox = new THREE.Mesh(new THREE.BoxGeometry(8, 2.8, 5.5), greenGlowMat);
+        pemBox.castShadow = true;
+        pemGroup.add(pemBox);
+        platformGroup.add(pemGroup);
+
+        registerComponent(
+            pemBox,
+            'pem',
+            'PEM Electrolyzer Unit',
+            'Produksi Hidrogen',
+            'Unit Elektrolisis Membran Pertukaran Proton (PEM) efisiensi tinggi yang memecah air murni hasil kaskade menjadi Hidrogen Hijau (H2) dan Oksigen.',
+            [
+                { label: 'Laju Produksi H2', val: '485 kg / jam' },
+                { label: 'Kemurnian Hidrogen', val: '99.999%' },
+                { label: 'Konsumsi Daya', val: '4.2 kWh / Nm³ H2' }
+            ],
+            'Terintegrasi langsung dengan daya kontinu OTEC 24/7 tanpa ketergantungan cuaca (berbeda dengan solar/angin).',
+            'fa-vial-circle-check'
+        );
+
+        // D. Dual Hydrogen Hortonspheres (Storage Tanks)
+        const storageGroup = new THREE.Group();
+        storageGroup.position.set(4, 7.5, -6);
+        
+        const sphereGeo = new THREE.SphereGeometry(2.6, 32, 32);
+        const sphereMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.1 });
+        
+        const s1 = new THREE.Mesh(sphereGeo, sphereMat);
+        s1.position.x = -2.5;
+        s1.castShadow = true;
+        const s2 = new THREE.Mesh(sphereGeo, sphereMat);
+        s2.position.x = 2.5;
+        s2.castShadow = true;
+        
+        // Sphere support legs
+        const legGeo = new THREE.CylinderGeometry(0.15, 0.15, 2.5);
+        for(let angle = 0; angle < Math.PI*2; angle += Math.PI/2) {
+            const l1 = new THREE.Mesh(legGeo, darkSteelMat);
+            l1.position.set(-2.5 + Math.cos(angle)*1.5, -2, Math.sin(angle)*1.5);
+            const l2 = new THREE.Mesh(legGeo, darkSteelMat);
+            l2.position.set(2.5 + Math.cos(angle)*1.5, -2, Math.sin(angle)*1.5);
+            storageGroup.add(l1, l2);
+        }
+        storageGroup.add(s1, s2);
+        platformGroup.add(storageGroup);
+
+        registerComponent(
+            s1,
+            'pem',
+            'Tangki Simpan Bola (Hortonspheres)',
+            'Penyimpanan Bertekanan',
+            'Tangki penyimpanan hidrogen hijau cair/gas bertekanan tinggi dengan desain sfere struktural untuk keamanan maksimal di lingkungan marinir.',
+            [
+                { label: 'Kapasitas Storage', val: '15.000 kg H2' },
+                { label: 'Tekanan Operasi', val: '350 - 700 Bar' },
+                { label: 'Material Dinding', val: 'Komposit Karbon + Titanium' }
+            ],
+            'Menyediakan buffer pasokan bahan bakar stabil untuk kapal yang melakukan pengisian di tengah laut.',
+            'fa-box-archive'
+        );
+
+        const pipeGroup = new THREE.Group();
+        pipeGroup.position.set(-10, 0, 0);
+
+        // CWP Pipeline extending deep down
+        const cwpGeo = new THREE.CylinderGeometry(1.2, 1.2, 55, 32, 1, true);
+        const cwpMat = new THREE.MeshStandardMaterial({ 
+            color: 0x0284c7, 
+            metalness: 0.5, 
+            roughness: 0.3,
+            transparent: true,
+            opacity: 0.85,
+            side: THREE.DoubleSide
+        });
+        const cwpMesh = new THREE.Mesh(cwpGeo, cwpMat);
+        cwpMesh.position.y = -27.5;
+        pipeGroup.add(cwpMesh);
+
+        // Pipe Flange Rings
+        for(let y = -5; y > -52; y -= 8) {
+            const ringGeo = new THREE.TorusGeometry(1.35, 0.15, 12, 24);
+            const ring = new THREE.Mesh(ringGeo, darkSteelMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = y;
+            pipeGroup.add(ring);
+        }
+
+        // Intake Mesh Filter Cage at Bottom (-1000m intake representation)
+        const intakeGeo = new THREE.ConeGeometry(2.0, 4, 16);
+        const intakeMesh = new THREE.Mesh(intakeGeo, yellowMat);
+        intakeMesh.position.y = -55;
+        intakeMesh.rotation.x = Math.PI;
+        pipeGroup.add(intakeMesh);
+        scene.add(pipeGroup);
+
+        registerComponent(
+            cwpMesh,
+            'pipe',
+            'Deep Cold Water Pipe (CWP)',
+            'Komponen Ekstraksi OTEC',
+            'Pipa raksasa fleksibel berdiameter besar yang menjulur hingga kedalaman 1.000 meter untuk menyedot air laut termoklin bersuhu 4-5°C.',
+            [
+                { label: 'Kedalaman Intake', val: '-1.000 Meter' },
+                { label: 'Laju Alir Air', val: '45 m³/detik' },
+                { label: 'Suhu Intake', val: '4.8 °C' }
+            ],
+            'Desain fleksibel anti-gelombang ekstrim dengan isolasi termal sintetis untuk meminimalkan kenaikan suhu air saat menyedot ke permukaan.',
+            'fa-arrows-down-to-line'
+        );
+
+        // Mooring Lines (Catenary Seabed Anchors)
+        const mooringMat = new THREE.LineBasicMaterial({ color: 0x64748b, linewidth: 2 });
+        const anchorPositions = [
+            [-35, -55, -35], [35, -55, -35],
+            [-35, -55, 35],  [35, -55, 35]
+        ];
+        anchorPositions.forEach((anc, idx) => {
+            const startPos = colPositions[idx < 2 ? idx : idx + 2];
+            const curve = new THREE.QuadraticBezierCurve3(
+                new THREE.Vector3(startPos[0], -2, startPos[2]),
+                new THREE.Vector3(startPos[0]*1.5, -30, startPos[2]*1.5),
+                new THREE.Vector3(anc[0], anc[1], anc[2])
+            );
+            const points = curve.getPoints(30);
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const line = new THREE.Line(lineGeo, mooringMat);
+            scene.add(line);
+        });
+
+        // Seabed Mesh
+        const seabedGeo = new THREE.PlaneGeometry(250, 250, 32, 32);
+        const seabedMat = new THREE.MeshStandardMaterial({ color: 0x021324, roughness: 0.9 });
+        const seabed = new THREE.Mesh(seabedGeo, seabedMat);
+        seabed.rotation.x = -Math.PI / 2;
+        seabed.position.y = -56;
+        scene.add(seabed);
+
+        const shipGroup = new THREE.Group();
+        shipGroup.position.set(24, 1.2, 0);
+
+        // Hull
+        const hullShape = new THREE.Shape();
+        hullShape.moveTo(-12, -3);
+        hullShape.lineTo(10, -3);
+        hullShape.quadraticCurveTo(15, -1, 16, 2);
+        hullShape.lineTo(-12, 2);
+        hullShape.closePath();
+
+        const extrudeSettings = { depth: 6, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.5, bevelThickness: 0.5 };
+        const hullGeo = new THREE.ExtrudeGeometry(hullShape, extrudeSettings);
+        const shipMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, metalness: 0.6, roughness: 0.3 });
+        const hullMesh = new THREE.Mesh(hullGeo, shipMat);
+        hullMesh.rotation.y = Math.PI / 2;
+        hullMesh.position.set(0, 0, -3);
+        hullMesh.castShadow = true;
+        shipGroup.add(hullMesh);
+
+        // Ship Cabin Superstructure
+        const cabinMesh = new THREE.Mesh(new THREE.BoxGeometry(5, 4, 5), steelMat);
+        cabinMesh.position.set(-8, 3.8, 0);
+        shipGroup.add(cabinMesh);
+
+        // Transfer Fuel Pipeline Connection Arm
+        const armGeo = new THREE.CylinderGeometry(0.2, 0.2, 10);
+        const armMesh = new THREE.Mesh(armGeo, yellowMat);
+        armMesh.rotation.z = Math.PI / 3;
+        armMesh.position.set(-6, 3.5, 0);
+        shipGroup.add(armMesh);
+
+        scene.add(shipGroup);
+
+        registerComponent(
+            hullMesh,
+            'bunkering',
+            'Kapal Bunkering Hidrogen Hijau',
+            'Hub Distribusi Maritim',
+            'Kapal tanker penyedia bahan bakar hidrogen lepas pantai yang melakukan *bunkering* (pengisian ulang) langsung dari platform OCEAN-H₂.',
+            [
+                { label: 'Laju Transfer H2', val: '1.200 kg / jam' },
+                { label: 'Waktu Bunkering', val: '~ 3.5 Jam' },
+                { label: 'Radius Pelayanan', val: 'Zona ZEE Indonesia' }
+            ],
+            'Menghilangkan keharusan kapal niaga ramah lingkungan untuk kembali ke pelabuhan darat, memangkas emisi logistik hingga 100%.',
+            'fa-ship'
+        );
+
+        function createParticleStream(color, particleCount, pathPoints) {
+            const curve = new THREE.CatmullRomCurve3(pathPoints);
+            const geo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const progress = new Float32Array(particleCount);
+
+            for (let i = 0; i < particleCount; i++) {
+                progress[i] = i / particleCount;
+                const p = curve.getPointAt(progress[i]);
+                positions[i*3] = p.x;
+                positions[i*3+1] = p.y;
+                positions[i*3+2] = p.z;
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const mat = new THREE.PointsMaterial({
+                color: color,
+                size: 0.45,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending
+            });
+
+            const pSystem = new THREE.Points(geo, mat);
+            scene.add(pSystem);
+
+            particleSystems.push({
+                system: pSystem,
+                curve: curve,
+                progress: progress,
+                count: particleCount
+            });
+        }
+
+        // Stream 1: Cold Water Flow (Up from CWP Bottom -55 to OTEC)
+        createParticleStream(0x00e5ff, 60, [
+            new THREE.Vector3(-10, -53, 0),
+            new THREE.Vector3(-10, -20, 0),
+            new THREE.Vector3(-10, 5, -5)
+        ]);
+
+        // Stream 2: Cascade Warm Heat Water Flow (OTEC to Desalination & PEM)
+        createParticleStream(0xf59e0b, 40, [
+            new THREE.Vector3(-10, 6.2, -6),
+            new THREE.Vector3(-10, 6.2, 6),
+            new THREE.Vector3(2, 6.2, 6)
+        ]);
+
+        // Stream 3: Hydrogen Gas Flow (PEM to Hortonspheres & Bunkering Ship)
+        createParticleStream(0x10b981, 50, [
+            new THREE.Vector3(2, 6.2, 6),
+            new THREE.Vector3(4, 7.5, -6),
+            new THREE.Vector3(18, 3, 0)
+        ]);
+
+        const cameraPresets = {
+            overview: { pos: new THREE.Vector3(42, 22, 50), target: new THREE.Vector3(0, 0, 0) },
+            pipe: { pos: new THREE.Vector3(-10, -25, 30), target: new THREE.Vector3(-10, -25, 0) },
+            nanofilm: { pos: new THREE.Vector3(-10, 10, 6), target: new THREE.Vector3(-10, 6.2, -6) },
+            cascade: { pos: new THREE.Vector3(-10, 10, 16), target: new THREE.Vector3(-10, 6.2, 6) },
+            pem: { pos: new THREE.Vector3(4, 12, 14), target: new THREE.Vector3(2, 6.2, 3) },
+            bunkering: { pos: new THREE.Vector3(24, 12, 22), target: new THREE.Vector3(20, 2, 0) }
+        };
+
+        function switchPreset(key) {
+            const config = cameraPresets[key];
+            if (!config) return;
+
+            // Highlight Active Preset Button
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                if (btn.dataset.preset === key) {
+                    btn.classList.add('active');
+                    btn.classList.remove('text-slate-300');
+                } else {
+                    btn.classList.remove('active');
+                    btn.classList.add('text-slate-300');
+                }
+            });
+
+            // GSAP Camera Transition
+            gsap.to(camera.position, {
+                x: config.pos.x,
+                y: config.pos.y,
+                z: config.pos.z,
+                duration: 1.8,
+                ease: 'power3.inOut'
+            });
+
+            gsap.to(controls.target, {
+                x: config.target.x,
+                y: config.target.y,
+                z: config.target.z,
+                duration: 1.8,
+                ease: 'power3.inOut',
+                onUpdate: () => controls.update()
+            });
+
+            // Open Detail Card if matching component exists
+            const matchedMesh = clickableMeshes.find(m => m.userData && m.userData.key === key);
+            if (matchedMesh) {
+                showDetailCard(matchedMesh.userData);
+            }
+        }
+
+        const detailCard = document.getElementById('detail-card');
+        
+        function showDetailCard(data) {
+            if (!data) return;
+
+            document.getElementById('card-title').innerText = data.title;
+            document.getElementById('card-badge').innerText = data.badge;
+            document.getElementById('card-desc').innerText = data.desc;
+            document.getElementById('card-novelty').innerText = data.novelty;
+            
+            // Icon
+            const iconContainer = document.getElementById('card-icon');
+            iconContainer.innerHTML = `<i class="fa-solid ${data.iconClass}"></i>`;
+
+            // Specs
+            const specsContainer = document.getElementById('card-specs');
+            specsContainer.innerHTML = data.specs.map(s => `
+                <div class="flex justify-between items-center border-b border-white/25 pb-1">
+                    <span class="text-slate-400">${s.label}</span>
+                    <span class="font-bold text-white font-tech" style="font-size:.8rem">${s.val}</span>
+                </div>
+            `).join('');
+
+            // Animate Drawer Slide In
+            detailCard.classList.remove('hidden', 'translate-x-full', 'opacity-0');
+            detailCard.classList.add('flex', 'translate-x-0', 'opacity-100');
+        }
+
+        function hideDetailCard() {
+            detailCard.classList.remove('translate-x-0', 'opacity-100');
+            detailCard.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => detailCard.classList.add('hidden'), 400);
+        }
+
+        document.getElementById('btn-close-card').addEventListener('click', hideDetailCard);
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (e) => {
+            // Ignore UI clicks
+            if (e.target.closest('.interactive')) return;
+
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickableMeshes, true);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                while (obj && !obj.userData.title && obj.parent) {
+                    obj = obj.parent;
+                }
+                if (obj && obj.userData.title) {
+                    showDetailCard(obj.userData);
+                    
+                    // Focus camera smoothly
+                    const worldPos = new THREE.Vector3();
+                    obj.getWorldPosition(worldPos);
+                    
+                    gsap.to(controls.target, {
+                        x: worldPos.x,
+                        y: worldPos.y,
+                        z: worldPos.z,
+                        duration: 1.2,
+                        ease: 'power2.out'
+                    });
+                }
+            }
+        });
+
+        // Event listeners for preset buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchPreset(btn.dataset.preset));
+        });
+
+        document.getElementById('btn-toggle-particles').addEventListener('click', function() {
+            showParticles = !showParticles;
+            particleSystems.forEach(p => p.system.visible = showParticles);
+            this.classList.toggle('is-off', !showParticles);
+        });
+
+        document.getElementById('btn-toggle-floating').addEventListener('click', function() {
+            isFloating = !isFloating;
+            this.classList.toggle('is-off', !isFloating);
+        });
+
+        document.getElementById('btn-toggle-theme').addEventListener('click', function() {
+            isNight = !isNight;
+            if (isNight) {
+                scene.background.set('#030b14');
+                scene.fog.color.set('#031726');
+                ambientLight.intensity = 1.2;
+                mainLight.intensity = 2.5;
+                this.innerHTML = '<i class="fa-solid fa-moon"></i><span class="hidden sm:inline">Night Sky</span>';
+            } else {
+                scene.background.set('#38bdf8');
+                scene.fog.color.set('#7dd3fc');
+                ambientLight.intensity = 2.2;
+                mainLight.intensity = 4.0;
+                this.innerHTML = '<i class="fa-solid fa-sun"></i><span class="hidden sm:inline">Day Sky</span>';
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        let clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            // 1. Update Ocean Waves Animation
+            if (isFloating) {
+                const pos = waterGeometry.attributes.position;
+                for (let i = 0; i < pos.count; i++) {
+                    const u = pos.getX(i);
+                    const v = pos.getY(i);
+                    const z = Math.sin(u * 0.1 + elapsedTime * 1.5) * 0.4 + Math.cos(v * 0.1 + elapsedTime * 1.2) * 0.3;
+                    pos.setZ(i, z);
+                }
+                waterGeometry.attributes.position.needsUpdate = true;
+
+                // Gentle Platform Floating Motion
+                platformGroup.position.y = Math.sin(elapsedTime * 1.2) * 0.25;
+                platformGroup.rotation.z = Math.sin(elapsedTime * 0.8) * 0.015;
+                platformGroup.rotation.x = Math.cos(elapsedTime * 0.6) * 0.012;
+
+                shipGroup.position.y = 1.2 + Math.sin(elapsedTime * 1.4 + 1.0) * 0.3;
+                shipGroup.rotation.z = Math.cos(elapsedTime * 1.0) * 0.02;
+            }
+
+            // 2. Update Flow Particles along Curves
+            if (showParticles) {
+                particleSystems.forEach(pObj => {
+                    const positions = pObj.system.geometry.attributes.position.array;
+                    for (let i = 0; i < pObj.count; i++) {
+                        pObj.progress[i] = (pObj.progress[i] + 0.003) % 1.0;
+                        const pt = pObj.curve.getPointAt(pObj.progress[i]);
+                        positions[i*3] = pt.x;
+                        positions[i*3+1] = pt.y;
+                        positions[i*3+2] = pt.z;
+                    }
+                    pObj.system.geometry.attributes.position.needsUpdate = true;
+                });
+            }
+
+            // 3. Dynamic Micro-Fluctuations for Live Telemetry HUD
+            if (Math.random() < 0.05) {
+                const h2Prod = (485.0 + (Math.random() - 0.5) * 4.0).toFixed(1);
+                document.getElementById('val-h2-prod').innerText = h2Prod;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Start animation loop on load
+        window.onload = function() {
+            animate();
+        };
+    </script>
+</body>
+</html>
